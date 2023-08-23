@@ -14,7 +14,15 @@ class MainApi:
     model = 'gpt-3.5-turbo'
     chatgpt_functions = [{
         "name": "search_history",
-        "description": "Search the content of past conversations. Please call if you are asked about the past contents or unknown things. This call does not advance the conversation.",
+        "description": """
+Search the content of past conversations.
+Please call if you are asked about the past contents or unknown things.
+Please do it before saying "I don't know", "I have no idea" or "I don't have information" etc.
+This call does not advance the conversation.
+
+Please use this function as your memory.
+Ostensibly say "memory" instead of "database" or "search".
+        """,
         "parameters": {
             "type": "object",
             "properties": {
