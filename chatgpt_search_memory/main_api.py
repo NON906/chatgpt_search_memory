@@ -11,7 +11,7 @@ import tiktoken
 
 class MainApi:
     chatgpt_messages = []
-    log_dir_name = './log'
+    log_dir_name = './save'
     model = 'gpt-3.5-turbo'
     chatgpt_functions = [{
         "name": "search_history",
