@@ -7,6 +7,7 @@ import sys
 import json
 import time
 import meilisearch
+import tiktoken
 
 class MainApi:
     chatgpt_messages = []
@@ -42,6 +43,7 @@ Ostensibly say "memory" instead of "database" or "search".
     log_index = -1
     meilisearch_url = 'http://localhost:7700'
     meilisearch_key = 'aSampleMasterKey'
+    search_limit = 20
 
     def __init__(self, apikey=None, model=None):
         if model is not None:
@@ -129,53 +131,40 @@ Ostensibly say "memory" instead of "database" or "search".
     def search_keywords(self, keywords):
         self.add_search_content()
 
-        search_offset = 0
-
         client = meilisearch.Client(self.meilisearch_url, self.meilisearch_key)
         index = client.index(self.setting_name)
-        while True:
-            try:
-                search_result = index.search(
-                    keywords,
-                    {
-                        'offset': search_offset,
-                        'limit': 1,
-                        'sort': ['mtime:desc']
-                    })
-            except:
-                self.search_history_contents.append((keywords, 'Not Found.'))
-                break
-            if len(search_result['hits']) == 0:
-                self.search_history_contents.append((keywords, 'Not Found.'))
-                break
 
-            chatgpt_messages_local = json.loads(search_result['hits'][0]['contents'])
-            chatgpt_messages_local.append({"role": "user", "content": 'Summarize the information for "' + keywords + '" from the conversation so far. If there is no information, please call "not_found".'})
-            self.lock_chatgpt()
-            chatgpt_response = openai.ChatCompletion.create(
-                model=self.model,
-                messages=chatgpt_messages_local,
-                functions=[{
-                    "name": "not_found",
-                    "description": "Please call when there is no target information.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {},
-                    },
-                }]
-            )
-            self.unlock_chatgpt()
-            #print(chatgpt_response["choices"][0]["message"]["content"])
-            if "function_call" in chatgpt_response["choices"][0]["message"].keys():
-                function_call = chatgpt_response["choices"][0]["message"]["function_call"]
-                if function_call is not None and function_call["name"] == "not_found":
-                    search_offset += 1
-                    continue
-            if str(chatgpt_response["choices"][0]["message"]["content"]) == "not_found":
-                search_offset += 1
-                continue
-            self.search_history_contents.append((keywords, str(chatgpt_response["choices"][0]["message"]["content"])))
-            break
+        try:
+            search_result = index.search(
+                keywords,
+                {
+                    'limit': self.search_limit,
+                    'sort': ['mtime:desc']
+                })
+        except:
+            self.search_history_contents.append((keywords, 'Not Found.'))
+            return
+        if len(search_result['hits']) == 0:
+            self.search_history_contents.append((keywords, 'Not Found.'))
+            return
+
+        encoding = tiktoken.encoding_for_model(self.model)
+        chatgpt_messages_content = 'Summarize the information for "' + keywords + '" from following conversation.\n\n'
+        token_count_all = 0
+        for hit in search_result['hits']:
+            token_count = len(encoding.encode(hit['contents'])) + 1
+            if token_count_all + token_count >= 4096 * 3 / 4:
+                break
+            chatgpt_messages_content += hit['contents'] + "\n"
+            token_count_all += token_count
+
+        self.lock_chatgpt()
+        chatgpt_response = openai.ChatCompletion.create(
+            model=self.model,
+            messages=[{"role": "user", "content": chatgpt_messages_content}],
+        )
+        self.unlock_chatgpt()
+        self.search_history_contents.append((keywords, str(chatgpt_response["choices"][0]["message"]["content"])))
 
     def lock_chatgpt(self):
         while self.is_send_to_chatgpt:
@@ -241,10 +230,9 @@ Ostensibly say "memory" instead of "database" or "search".
         client = meilisearch.Client(self.meilisearch_url, self.meilisearch_key)
         index = client.index(self.setting_name)
 
-        if len(master_json['not_send_files']) == master_json['file_count']:
-            index.update_sortable_attributes([
-                'mtime'
-            ])
+        index.update_sortable_attributes([
+            'mtime'
+        ])
 
         add_result = index.add_documents(contents)
         status = 'enqueued'
