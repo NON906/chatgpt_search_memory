@@ -140,7 +140,7 @@ Ostensibly say "memory" instead of "database" or "search".
                     {
                         'offset': search_offset,
                         'limit': 1,
-                        #'sort': ['mtime:desc']
+                        'sort': ['mtime:desc']
                     })
             except:
                 self.search_history_contents.append((keywords, 'Not Found.'))
