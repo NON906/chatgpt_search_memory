@@ -149,7 +149,7 @@ Ostensibly say "memory" instead of "database" or "search".
             return
 
         encoding = tiktoken.encoding_for_model(self.model)
-        chatgpt_messages_content = 'Summarize the information for "' + keywords + '" from following conversation.\n\n'
+        chatgpt_messages_content = 'Summarize the information for "' + keywords + '" from the following conversations.\n\n'
         token_count_all = 0
         for hit in search_result['hits']:
             token_count = len(encoding.encode(hit['contents'])) + 1
@@ -177,6 +177,9 @@ Ostensibly say "memory" instead of "database" or "search".
     def unlock_chatgpt(self):
         self.last_time_chatgpt = time.time()
         self.is_send_to_chatgpt = False
+
+    def get_log_file_name(self):
+        return os.path.join(self.log_dir_name, self.setting_name, f"{self.log_index:09}.json")
 
     def write_log(self):
         if self.log_dir_name is None:
