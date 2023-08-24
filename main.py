@@ -118,6 +118,28 @@ if __name__ == "__main__":
                         btn_delete = gr.Button(value='Delete')
                         btn_delete.click(fn=chatgpt_delete, inputs=txt_file_path, outputs=txt_file_path)
 
+        with gr.Row():
+            gr.Markdown(value='## Settings')
+        with gr.Row():
+            with open('./chatgpt_api.txt', 'r') as f:
+                txt_apikey_value = f.read()
+            txt_apikey = gr.Textbox(value=txt_apikey_value, label='API Key')
+            btn_apikey_save = gr.Button(value='Save And Reflect')
+            def apikey_save(setting_api: str):
+                with open('./chatgpt_api.txt', 'w') as f:
+                    f.write(setting_api)
+                main_api.change_apikey(setting_api)
+            btn_apikey_save.click(fn=apikey_save, inputs=txt_apikey)
+        with gr.Row():
+            txt_chatgpt_model = gr.Textbox(value=loaded_json['model'], label='ChatGPT Model Name')
+            btn_chatgpt_model_save = gr.Button(value='Save And Reflect')
+            def chatgpt_model_save(setting_model: str):
+                loaded_json['model'] = setting_model
+                with open('./save/settings.json', 'w') as f:
+                    json.dump(loaded_json, f)
+                main_api.change_model(setting_model)
+            btn_chatgpt_model_save.click(fn=chatgpt_model_save, inputs=txt_chatgpt_model)
+
         btn_generate.click(fn=chatgpt_generate,
             inputs=[text_input, chatbot],
             outputs=[text_input, chatbot])
