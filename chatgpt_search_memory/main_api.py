@@ -105,7 +105,7 @@ Ostensibly say "memory" instead of "database" or "search".
     def get_system_content(self):
         system_content = '' + self.setting_content
         for search_history_content in self.search_history_contents:
-            system_content += '\n* The meaning of "' + search_history_content[0] + '" is as follows:\n' + search_history_content[1] + '\n'
+            system_content += '\n* Here\'s what you remember about "' + search_history_content[0] + '" :\n' + search_history_content[1] + '\n'
         return system_content
 
     def send_to_chatgpt_main(self, search=True):
