@@ -128,8 +128,16 @@ Ostensibly say "memory" instead of "database" or "search".
             if function_call is not None and function_call["name"] == "search_history":
                 func_args = json.loads(function_call["arguments"])
                 keywords = func_args["keywords"]
-                self.search_keywords(keywords)
-                result = self.send_to_chatgpt_main(False)
+                is_searched = False
+                for item in self.search_history_contents:
+                    if item[0] == keywords:
+                        is_searched = True
+                        break
+                if is_searched:
+                    result = self.send_to_chatgpt_main(False)
+                else:
+                    self.search_keywords(keywords)
+                    result = self.send_to_chatgpt_main(True)
         else:
             result = str(chatgpt_response["choices"][0]["message"]["content"])
         #print(result, file=sys.stderr)
