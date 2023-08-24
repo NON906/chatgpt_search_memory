@@ -188,9 +188,9 @@ Ostensibly say "memory" instead of "database" or "search".
         sleep_time = 0.5 - (time.time() - self.last_time_chatgpt)
         if sleep_time > 0.0:
             time.sleep(sleep_time)
+        self.last_time_chatgpt = time.time()
 
     def unlock_chatgpt(self):
-        self.last_time_chatgpt = time.time()
         self.is_send_to_chatgpt = False
 
     def get_log_file_name(self):
