@@ -164,14 +164,14 @@ Ostensibly say "memory" instead of "database" or "search".
             return
 
         encoding = tiktoken.encoding_for_model(self.model)
-        chatgpt_messages_content = 'Summarize the information for "' + keywords + '" from the following conversations.\n\n'
-        token_count_all = 0
+        chatgpt_messages_content = ''
         for hit in search_result['hits']:
-            token_count = len(encoding.encode(hit['messages'])) + 1
-            if token_count_all + token_count >= 4096 * 3 / 4:
+            next_messages = hit['messages'] + '\n---\n' + chatgpt_messages_content
+            token_count = len(encoding.encode('Summarize the information for "' + keywords + '" from the following conversations.\n---\n' + next_messages))
+            if token_count >= 4096 * 3 / 4:
                 break
-            chatgpt_messages_content += hit['messages'] + "\n"
-            token_count_all += token_count
+            chatgpt_messages_content = next_messages
+        chatgpt_messages_content = 'Summarize the information for "' + keywords + '" from the following conversations.\n---\n' + chatgpt_messages_content
 
         self.lock_chatgpt()
         chatgpt_response = openai.ChatCompletion.create(
