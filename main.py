@@ -62,9 +62,11 @@ else:
 
 if os.path.isfile('chatgpt_api.txt'):
     with open('chatgpt_api.txt', 'r', encoding='UTF-8') as f:
-        main_api = MainApi(f.read(), loaded_json['model'])
+        txt_apikey_value = f.read()
+        main_api = MainApi(txt_apikey_value, loaded_json['model'])
 else:
     main_api = MainApi(None, loaded_json['model'])
+    txt_apikey_value = ''
 
 def chatgpt_generate(text_input_str: str, chat_history):
     result = main_api.send_to_chatgpt(text_input_str)
@@ -170,8 +172,6 @@ if __name__ == "__main__":
         with gr.Row():
             gr.Markdown(value='## Settings')
         with gr.Row():
-            with open('./chatgpt_api.txt', 'r') as f:
-                txt_apikey_value = f.read()
             txt_apikey = gr.Textbox(value=txt_apikey_value, label='API Key')
             btn_apikey_save = gr.Button(value='Save And Reflect')
             def apikey_save(setting_api: str):
