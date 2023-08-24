@@ -3,8 +3,53 @@
 
 import os
 import json
+import urllib.request
+import subprocess
+import platform
+import argparse
 import gradio as gr
 from chatgpt_search_memory.main_api import MainApi
+
+def wget(url: str, save_path: str):
+    with urllib.request.urlopen(url) as u:
+        with open(save_path, 'bw') as o:
+            o.write(u.read())
+
+if os.name == 'nt':
+    if not os.path.isfile('./bin/meilisearch-windows-amd64.exe'):
+        print('Download files...')
+        os.makedirs('./bin', exist_ok=True)
+        wget('https://github.com/meilisearch/meilisearch/releases/download/v1.3.1/meilisearch-windows-amd64.exe', './bin/meilisearch-windows-amd64.exe')
+        wget('https://raw.githubusercontent.com/meilisearch/meilisearch/main/LICENSE', './bin/LICENSE')
+    subprocess.Popen(['./bin/meilisearch-windows-amd64.exe', '--master-key', 'aSampleMasterKey'])
+elif platform.system() == 'Darwin':
+    if platform.machine() == 'AMD64':
+        if not os.path.isfile('./bin/meilisearch'):
+            print('Download files...')
+            os.makedirs('./bin', exist_ok=True)
+            wget('https://github.com/meilisearch/meilisearch/releases/download/v1.3.1/meilisearch-macos-amd64', './bin/meilisearch')
+            wget('https://raw.githubusercontent.com/meilisearch/meilisearch/main/LICENSE', './bin/LICENSE')
+    else:
+        if not os.path.isfile('./bin/meilisearch'):
+            print('Download files...')
+            os.makedirs('./bin', exist_ok=True)
+            wget('https://github.com/meilisearch/meilisearch/releases/download/v1.3.1/meilisearch-macos-apple-silicon', './bin/meilisearch')
+            wget('https://raw.githubusercontent.com/meilisearch/meilisearch/main/LICENSE', './bin/LICENSE')
+    subprocess.Popen(['./bin/meilisearch', '--master-key', 'aSampleMasterKey'])
+else:
+    if platform.machine() == 'AMD64':
+        if not os.path.isfile('./bin/meilisearch'):
+            print('Download files...')
+            os.makedirs('./bin', exist_ok=True)
+            wget('https://github.com/meilisearch/meilisearch/releases/download/v1.3.1/meilisearch-linux-amd64', './bin/meilisearch')
+            wget('https://raw.githubusercontent.com/meilisearch/meilisearch/main/LICENSE', './bin/LICENSE')
+    else:
+        if not os.path.isfile('./bin/meilisearch'):
+            print('Download files...')
+            os.makedirs('./bin', exist_ok=True)
+            wget('https://github.com/meilisearch/meilisearch/releases/download/v1.3.1/meilisearch-linux-aarch64', './bin/meilisearch')
+            wget('https://raw.githubusercontent.com/meilisearch/meilisearch/main/LICENSE', './bin/LICENSE')
+    subprocess.Popen(['./bin/meilisearch', '--master-key', 'aSampleMasterKey'])
 
 if os.path.isfile('./save/settings.json'):
     with open('./save/settings.json', 'r', encoding='UTF-8') as f:
@@ -96,6 +141,10 @@ def chatgpt_delete(name: str):
     return gr.update(value='', choices=list(loaded_json['saves'].keys()))
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--disable_browser_open', action='store_true')
+    args = parser.parse_args()
+
     with gr.Blocks() as block_interface:
         with gr.Row():
             gr.Markdown(value='## Chat')
@@ -152,4 +201,4 @@ if __name__ == "__main__":
         btn_clear.click(fn=chatgpt_clear,
             outputs=chatbot)
 
-    block_interface.launch()
+    block_interface.launch(inbrowser=(not args.disable_browser_open))
