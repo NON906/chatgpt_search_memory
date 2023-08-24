@@ -59,11 +59,12 @@ def chatgpt_load(name: str, chat_history):
     if not name in loaded_json['saves'].keys():
         return chat_history
 
-    main_api.load_log(loaded_json['saves'][name])
+    setting_name, id_index = loaded_json['saves'][name]
+    main_api.search_log(setting_name, id_index)
 
     chat_history = []
     for loop in range(0, len(main_api.chatgpt_messages), 2):
-        chat_history.append((main_api.chatgpt_messages[loop], main_api.chatgpt_messages[loop + 1]))
+        chat_history.append((main_api.chatgpt_messages[loop]['content'], main_api.chatgpt_messages[loop + 1]['content']))
 
     return chat_history
 
@@ -71,9 +72,9 @@ def chatgpt_save(name: str):
     if name == '':
         return gr.update()
     main_api.write_log()
-    loaded_json['saves'][name] = main_api.get_log_file_name()
+    loaded_json['saves'][name] = (main_api.setting_name, main_api.log_index)
     with open('./save/settings.json', 'w', encoding='UTF-8') as f:
-        json.dump(loaded_json, f)
+        json.dump(loaded_json, f, ensure_ascii=False)
     return gr.update(choices=list(loaded_json['saves'].keys()))
 
 def chatgpt_delete(name: str):
@@ -81,7 +82,7 @@ def chatgpt_delete(name: str):
         return gr.update()
     del loaded_json['saves'][name]
     with open('./save/settings.json', 'w', encoding='UTF-8') as f:
-        json.dump(loaded_json, f)
+        json.dump(loaded_json, f, ensure_ascii=False)
     return gr.update(value='', choices=list(loaded_json['saves'].keys()))
 
 if __name__ == "__main__":
@@ -98,7 +99,10 @@ if __name__ == "__main__":
                     btn_remove_last = gr.Button(value='Remove last')
                     btn_clear = gr.Button(value='Clear all')
                 with gr.Row():
-                    txt_file_path = gr.Dropdown(label='Conversation Name', allow_custom_value=True, choices=loaded_json['saves'].keys())
+                    txt_file_path = gr.Dropdown(label='Conversation Name', allow_custom_value=True, choices=list(loaded_json['saves'].keys()))
+                    def save_list_update():
+                        return gr.update(choices=list(loaded_json['saves'].keys()))
+                    txt_file_path.focus(fn=save_list_update, outputs=txt_file_path)
                     with gr.Column():
                         btn_load = gr.Button(value='Load')
                         btn_load.click(fn=chatgpt_load, inputs=[txt_file_path, chatbot], outputs=chatbot)

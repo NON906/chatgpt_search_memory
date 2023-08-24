@@ -64,12 +64,19 @@ Ostensibly say "memory" instead of "database" or "search".
         try:
             if os.path.isfile(log):
                 with open(log, 'r', encoding='UTF-8') as f:
-                    self.chatgpt_messages = json.loads(f.read())[1:]
-                self.log_index = int(os.path.splitext(os.path.basename(log))[0])
+                    loaded_json = json.load(f)
+                    self.load_log_dict(int(os.path.splitext(os.path.basename(log))[0]), loaded_json['messages'], loaded_json['others'])
                 return True
         except:
             pass
         return False
+
+    def load_log_dict(self, index_id, messages, others):
+        self.chatgpt_messages = messages[1:]
+        self.setting_content = others['setting_content']
+        self.setting_name = others['setting_name']
+        self.search_history_contents = others['search_history_contents']
+        self.log_index = index_id
 
     def remove_last_conversation(self, result=None, write_log=True):
         if result is None or self.chatgpt_messages[-1]["content"] == result:
@@ -152,10 +159,10 @@ Ostensibly say "memory" instead of "database" or "search".
         chatgpt_messages_content = 'Summarize the information for "' + keywords + '" from the following conversations.\n\n'
         token_count_all = 0
         for hit in search_result['hits']:
-            token_count = len(encoding.encode(hit['contents'])) + 1
+            token_count = len(encoding.encode(hit['messages'])) + 1
             if token_count_all + token_count >= 4096 * 3 / 4:
                 break
-            chatgpt_messages_content += hit['contents'] + "\n"
+            chatgpt_messages_content += hit['messages'] + "\n"
             token_count_all += token_count
 
         self.lock_chatgpt()
@@ -189,7 +196,7 @@ Ostensibly say "memory" instead of "database" or "search".
         master_file_name = os.path.join(log_dir_char_name, 'master.json')
         if os.path.isfile(master_file_name):
             with open(master_file_name, 'r', encoding='UTF-8') as f:
-                master_json = json.loads(f.read())
+                master_json = json.load(f)
         else:
             master_json = {}
             master_json['file_count'] = 0
@@ -199,11 +206,19 @@ Ostensibly say "memory" instead of "database" or "search".
             master_json['file_count'] += 1
         log_file_name = os.path.join(log_dir_char_name, f"{self.log_index:09}.json")
         with open(log_file_name, 'w', encoding='UTF-8') as f:
-            f.write(json.dumps([{"role": "system", "content": self.get_system_content()}] + self.chatgpt_messages, sort_keys=True, indent=4, ensure_ascii=False))
+            json_contents = {
+                'messages': [{"role": "system", "content": self.get_system_content()}] + self.chatgpt_messages,
+                'others': {
+                    'setting_content': self.setting_content,
+                    'setting_name': self.setting_name,
+                    'search_history_contents': self.search_history_contents
+                }
+            }
+            json.dump(json_contents, f, ensure_ascii=False)
         if not self.log_index in master_json['not_send_files']:
             master_json['not_send_files'].append(self.log_index)
         with open(master_file_name, 'w', encoding='UTF-8') as f:
-            f.write(json.dumps(master_json))
+            json.dump(master_json, f, ensure_ascii=False)
 
     def clear(self):
         self.chatgpt_messages = []
@@ -224,15 +239,23 @@ Ostensibly say "memory" instead of "database" or "search".
             log_file_name = os.path.join(log_dir_char_name, f"{index:09}.json")
             mtime = os.path.getmtime(log_file_name)
             with open(log_file_name, 'r', encoding='UTF-8') as f:
-                contents.append({
-                    'id': index,
-                    'contents': f.read(),
-                    'mtime': mtime
-                })
+                log_json = json.load(f)
+            contents.append({
+                'id': index,
+                'messages': json.dumps(log_json['messages'], ensure_ascii=False),
+                'others': json.dumps(log_json['others'], ensure_ascii=False),
+                'mtime': mtime
+            })
         
         client = meilisearch.Client(self.meilisearch_url, self.meilisearch_key)
         index = client.index(self.setting_name)
 
+        index.update_searchable_attributes([
+            'messages'
+        ])
+        index.update_filterable_attributes([
+            'id'
+        ])
         index.update_sortable_attributes([
             'mtime'
         ])
@@ -246,6 +269,26 @@ Ostensibly say "memory" instead of "database" or "search".
                 print('add_search_content() is ' + status + '.', file=sys.stderr)
                 return
 
+        update_files = master_json['not_send_files']
         master_json['not_send_files'] = []
         with open(master_file_name, 'w', encoding='UTF-8') as f:
-            f.write(json.dumps(master_json))
+            json.dump(master_json, f, ensure_ascii=False)
+
+        for index in update_files:
+            log_file_name = os.path.join(log_dir_char_name, f"{index:09}.json")
+            os.remove(log_file_name)
+
+    def search_log(self, setting_name, index_id):
+        self.add_search_content()
+
+        client = meilisearch.Client(self.meilisearch_url, self.meilisearch_key)
+        index = client.index(setting_name)
+        try:
+            get_result = index.get_documents({
+                'limit': 1,
+                'filter': 'id = ' + str(index_id)
+            })
+        except Exception as e:
+            print('This log is not found.', file=sys.stderr)
+            return
+        self.load_log_dict(index_id, json.loads(get_result.results[0].messages), json.loads(get_result.results[0].others))
