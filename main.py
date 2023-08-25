@@ -22,33 +22,13 @@ if os.name == 'nt':
         wget('https://github.com/meilisearch/meilisearch/releases/download/v1.3.1/meilisearch-windows-amd64.exe', './bin/meilisearch-windows-amd64.exe')
         wget('https://raw.githubusercontent.com/meilisearch/meilisearch/main/LICENSE', './bin/LICENSE')
     subprocess.Popen(['./bin/meilisearch-windows-amd64.exe', '--master-key', 'aSampleMasterKey'])
-elif platform.system() == 'Darwin':
-    if platform.machine() == 'AMD64':
-        if not os.path.isfile('./bin/meilisearch'):
-            print('Download files...')
-            os.makedirs('./bin', exist_ok=True)
-            wget('https://github.com/meilisearch/meilisearch/releases/download/v1.3.1/meilisearch-macos-amd64', './bin/meilisearch')
-            wget('https://raw.githubusercontent.com/meilisearch/meilisearch/main/LICENSE', './bin/LICENSE')
-    else:
-        if not os.path.isfile('./bin/meilisearch'):
-            print('Download files...')
-            os.makedirs('./bin', exist_ok=True)
-            wget('https://github.com/meilisearch/meilisearch/releases/download/v1.3.1/meilisearch-macos-apple-silicon', './bin/meilisearch')
-            wget('https://raw.githubusercontent.com/meilisearch/meilisearch/main/LICENSE', './bin/LICENSE')
-    subprocess.Popen(['./bin/meilisearch', '--master-key', 'aSampleMasterKey'])
 else:
-    if platform.machine() == 'AMD64':
-        if not os.path.isfile('./bin/meilisearch'):
-            print('Download files...')
-            os.makedirs('./bin', exist_ok=True)
-            wget('https://github.com/meilisearch/meilisearch/releases/download/v1.3.1/meilisearch-linux-amd64', './bin/meilisearch')
-            wget('https://raw.githubusercontent.com/meilisearch/meilisearch/main/LICENSE', './bin/LICENSE')
-    else:
-        if not os.path.isfile('./bin/meilisearch'):
-            print('Download files...')
-            os.makedirs('./bin', exist_ok=True)
-            wget('https://github.com/meilisearch/meilisearch/releases/download/v1.3.1/meilisearch-linux-aarch64', './bin/meilisearch')
-            wget('https://raw.githubusercontent.com/meilisearch/meilisearch/main/LICENSE', './bin/LICENSE')
+    if not os.path.isfile('./bin/meilisearch'):
+        print('Download files...')
+        os.makedirs('./bin', exist_ok=True)
+        os.chdir('./bin')
+        subprocess.run('curl -L https://install.meilisearch.com | sh', shell=True)
+        os.chdir('..')
     subprocess.Popen(['./bin/meilisearch', '--master-key', 'aSampleMasterKey'])
 
 if os.path.isfile('./save/settings.json'):
