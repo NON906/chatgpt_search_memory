@@ -44,6 +44,7 @@ Ostensibly say "memory" instead of "database" or "search".
     meilisearch_url = 'http://localhost:7700'
     meilisearch_key = 'aSampleMasterKey'
     search_limit = 20
+    summarize_tokens = 4096 * 3 / 4
 
     def __init__(self, apikey=None, model=None):
         if model is not None:
@@ -57,6 +58,9 @@ Ostensibly say "memory" instead of "database" or "search".
 
     def change_model(self, model):
         self.model = model
+
+    def set_summarize_tokens(self, tokens):
+        self.summarize_tokens = tokens
 
     def load_log(self, log):
         if log is None:
@@ -168,7 +172,7 @@ Ostensibly say "memory" instead of "database" or "search".
         for hit in search_result['hits']:
             next_messages = hit['messages'] + '\n---\n' + chatgpt_messages_content
             token_count = len(encoding.encode('Summarize the information for "' + keywords + '" from the following conversations.\n---\n' + next_messages))
-            if token_count >= 4096 * 3 / 4:
+            if token_count >= self.summarize_tokens:
                 break
             chatgpt_messages_content = next_messages
         chatgpt_messages_content = 'Summarize the information for "' + keywords + '" from the following conversations.\n---\n' + chatgpt_messages_content
