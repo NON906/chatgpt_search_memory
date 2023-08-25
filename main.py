@@ -80,7 +80,7 @@ def chatgpt_remove_last(text_input_str: str, chat_history):
 
 def chatgpt_clear():
     main_api.clear()
-    return []
+    return [[], '']
 
 def chatgpt_load(name: str, chat_history):
     global loaded_json
@@ -110,7 +110,7 @@ def chatgpt_save(name: str):
     loaded_json['saves'][name] = (main_api.setting_name, main_api.log_index)
     with open('./save/settings.json', 'w', encoding='UTF-8') as f:
         json.dump(loaded_json, f, ensure_ascii=False)
-    return gr.update(value=name, choices=list(loaded_json['saves'].keys()))
+    return [gr.update(value=name, choices=list(loaded_json['saves'].keys())), gr.update(interactive=True), gr.update(interactive=False), gr.update(interactive=True)]
 
 def chatgpt_delete(name: str):
     global loaded_json
@@ -120,7 +120,13 @@ def chatgpt_delete(name: str):
     del loaded_json['saves'][name]
     with open('./save/settings.json', 'w', encoding='UTF-8') as f:
         json.dump(loaded_json, f, ensure_ascii=False)
-    return gr.update(value='', choices=list(loaded_json['saves'].keys()))
+    return [gr.update(value='', choices=list(loaded_json['saves'].keys())), gr.update(interactive=False), gr.update(interactive=False), gr.update(interactive=False)]
+
+def chatgpt_data_check_exists(name: str):
+    if name == '':
+        return [gr.update(interactive=False), gr.update(interactive=False), gr.update(interactive=False)]
+    exists = name in loaded_json['saves'].keys()
+    return [gr.update(interactive=exists), gr.update(interactive=(not exists)), gr.update(interactive=exists)]
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -140,14 +146,15 @@ if __name__ == "__main__":
                     btn_remove_last = gr.Button(value='Remove last')
                     btn_clear = gr.Button(value='Clear all')
                 with gr.Row():
-                    txt_file_path = gr.Dropdown(label='Conversation Name', allow_custom_value=True, choices=list(loaded_json['saves'].keys()))
+                    dropdown_conversation_name = gr.Dropdown(label='Conversation Name', allow_custom_value=True, choices=list(loaded_json['saves'].keys()))
                     with gr.Column():
-                        btn_load = gr.Button(value='Load')
-                        btn_load.click(fn=chatgpt_load, inputs=[txt_file_path, chatbot], outputs=chatbot)
-                        btn_save = gr.Button(value='Save')
-                        btn_save.click(fn=chatgpt_save, inputs=txt_file_path, outputs=txt_file_path)
-                        btn_delete = gr.Button(value='Delete')
-                        btn_delete.click(fn=chatgpt_delete, inputs=txt_file_path, outputs=txt_file_path)
+                        btn_load = gr.Button(value='Open', interactive=False)
+                        btn_save = gr.Button(value='Add', interactive=False)
+                        btn_delete = gr.Button(value='Delete', interactive=False)
+                        btn_load.click(fn=chatgpt_load, inputs=[dropdown_conversation_name, chatbot], outputs=chatbot)
+                        btn_save.click(fn=chatgpt_save, inputs=dropdown_conversation_name, outputs=[dropdown_conversation_name, btn_load, btn_save, btn_delete])
+                        btn_delete.click(fn=chatgpt_delete, inputs=dropdown_conversation_name, outputs=[dropdown_conversation_name, btn_load, btn_save, btn_delete])
+                    dropdown_conversation_name.input(fn=chatgpt_data_check_exists, inputs=dropdown_conversation_name, outputs=[btn_load, btn_save, btn_delete])
 
         with gr.Row():
             gr.Markdown(value='## Settings')
@@ -179,6 +186,6 @@ if __name__ == "__main__":
             inputs=[text_input, chatbot],
             outputs=[text_input, chatbot])
         btn_clear.click(fn=chatgpt_clear,
-            outputs=chatbot)
+            outputs=[chatbot, dropdown_conversation_name])
 
     block_interface.launch(inbrowser=(not args.disable_browser_open))
